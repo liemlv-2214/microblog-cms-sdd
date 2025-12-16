@@ -1,0 +1,7 @@
+name: create-domain-spec
+description: Create domain model specification for Microblog CMS
+inputs:
+  - product_spec
+output:
+  path: spec/domain.md
+template: domain-spec.md
