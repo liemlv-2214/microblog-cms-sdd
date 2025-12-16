@@ -78,12 +78,46 @@ This step answers **“How do users interact with the system?”**
 
 ---
 
-## Next Steps
+## STEP B4 – API Specification (Contract Definition)
 
-### 🔜 Step B4 – API Contract Specification
-- Map each user flow to REST/API endpoints.
-- Define request/response contracts.
-- Specify authorization rules per endpoint.
+In STEP B4, the API specification for the Microblog CMS (v1) was defined
+using a Spec Driven Development (SDD) approach.
+
+All API endpoints are derived **strictly from existing user flows**
+defined in `spec/flows/`.  
+No new features or behaviors were introduced beyond the approved v1 scope.
+
+### Objectives
+- Translate user flows into clear, RESTful API contracts
+- Define authentication and authorization boundaries per endpoint
+- Establish request/response structures before implementation
+- Ensure backend implementation can be done without ambiguity
+
+### Deliverables
+- `spec/api.md` – Complete API specification including:
+  - HTTP method and endpoint paths
+  - Authentication requirements and allowed roles
+  - Request body and parameters (essential fields only)
+  - Example success responses
+  - Common error responses (HTTP status codes)
+- Clear mapping between:
+  - User flows (B3)
+  - API endpoints (B4)
+
+### Scope & Constraints
+- APIs are limited to **v1 behavior only**
+- No database schemas, ORM logic, or framework-specific details included
+- No UI or frontend behavior described
+- No additional endpoints beyond documented user flows
+
+### Outcome
+This step establishes a **contract-first backend design**.
+The API specification serves as the single source of truth for the next phase,
+where implementation (STEP C1+) can proceed safely and predictably.
+
+---
+
+## Next Steps
 
 ### 🔜 Step C – Implementation
 - Implement APIs using **Next.js App Router + TypeScript**.
