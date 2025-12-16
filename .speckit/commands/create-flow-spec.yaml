@@ -1,0 +1,7 @@
+name: create-flow-spec
+description: Create user flow specifications for Microblog CMS
+inputs:
+  - flow_name
+output:
+  path: spec/flows/{{flow_name}}.md
+template: flow-spec.md

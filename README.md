@@ -1,148 +1,138 @@
-# Microblog CMS – Spec Driven Development
+# Microblog CMS – Spec Driven Development (SDD)
 
-This project is a **learning exercise for Spec Driven Development (SDD)**, focusing on:
+This repository demonstrates a **Spec Driven Development (SDD)** workflow
+using GitHub Copilot Agent Mode, SpecKit-style specifications, and MCP
+integration (Context7).
 
-- Using **GitHub Copilot Agent Mode** as a development collaborator
-- Applying a **SpecKit-inspired workflow** (Spec → Flow → Code)
-- Integrating **Model Context Protocol (MCP)** into the development process
-- Building a small but complete product: **Microblog CMS**
-
----
-
-## Project Scope
-
-**Microblog CMS** is a lightweight content management system that supports:
-
-- Writing short posts (draft / publish)
-- Tagging posts
-- Displaying posts in a timeline and by tag
-- Commenting with moderation
-
-The primary goal of this repository is **not feature completeness**, but to
-demonstrate a **clear, traceable Spec Driven Development workflow**.
+The project implements **Microblog CMS (Bài 10)** as part of the SDD learning
+exercise.
 
 ---
 
-## Technology Stack
+## Completed Steps
 
-- **Next.js** (App Router)
-- **TypeScript**
-- **Supabase** (planned for database & backend services)
-- **GitHub Copilot Agent Mode**
-- **SpecKit-inspired SDD workflow**
-- **Model Context Protocol (MCP)**
+### ✅ Step A1 – Project Initialization
+- Defined project scope and selected **Microblog CMS** as the target problem.
+- Established SDD goals and evaluation criteria.
+- Created initial repository structure.
+- Documented learning objectives and submission requirements.
 
----
-
-## Step A1 – Project & Environment Setup ✅
-
-The initial project setup establishes a clean and modern development foundation.
-
-### Completed Tasks
-- Created a **public GitHub repository**
-- Initialized a **Next.js project** with:
-  - App Router
-  - TypeScript
-  - ESLint
-- Verified the application runs locally
-- Created a **Supabase project** for future backend integration
-- Performed an initial clean commit
-
-This step ensures the project starts from a stable and reviewable baseline.
+### ✅ Step A2 – Tooling & Agent Setup
+- Enabled **GitHub Copilot Agent Mode**.
+- Set up SpecKit-style workflow (commands & templates).
+- Configured **MCP (Context7)** integration and documented runtime limitations.
+- Added documentation under `docs/mcp.md` to justify MCP usage.
 
 ---
 
-## Step A2 – SDD Tooling Setup ✅
+## ✅ Step B1 – Product Specification
+- Defined product vision, goals, and success criteria.
+- Identified target users (Admin, Editor, Reader).
+- Documented core features and explicit non-goals for v1.
+- Created `spec/product.md` as the single source of truth for product intent.
 
-Step A2 focuses on preparing the tools required for Spec Driven Development.
-
-### GitHub Copilot Agent Mode
-- GitHub Copilot is used in **Agent Mode**, not simple chat mode
-- The agent is able to:
-  - Read repository files
-  - Analyze project structure
-  - Participate in planning and specification discussions
-
-This enables an **agent-assisted SDD workflow**, where the agent collaborates
-throughout the spec and implementation phases.
+This step answers **“What are we building and why?”**
 
 ---
 
-### SpecKit-Inspired Workflow
+## ✅ Step B2 – Domain Modeling
+- Created a conceptual domain model in `spec/domain.md`.
+- Identified core domain entities:
+  - User
+  - Post
+  - Category
+  - Tag
+  - Comment
+- Defined entity responsibilities and relationships.
+- Modeled lifecycle states (Draft → Published, Pending → Approved).
+- Explicitly separated **domain concepts** from implementation details.
 
-This project follows the workflow described in:  
-https://github.com/github/spec-kit
+> Note:  
+> Domain modeling at this step focuses on **conceptual correctness**, not
+> database schema or API design. Detailed persistence and optimization
+> concerns are deferred to later steps.
 
-Instead of relying on a dedicated CLI, the workflow is implemented through:
-
-- Structured specification files under `spec/`
-- Custom command and template definitions under `.speckit/`
-- Execution of “SpecKit commands” via GitHub Copilot Agent prompts
-
-This approach preserves the core ideas of SpecKit while remaining tool-agnostic
-and suitable for the current environment.
-
----
-
-### Model Context Protocol (MCP) – Context7
-
-Model Context Protocol (MCP) is integrated as part of the SDD workflow.
-
-- **Context7** is configured as the MCP server example
-- MCP is intended to provide:
-  - Best practices for Next.js App Router API design
-  - Guidance on Supabase schema design
-  - Architectural input during spec refinement
-
-Due to current limitations of the GitHub Copilot Agent runtime,
-Context7 MCP could not be invoked directly at runtime.
-This behavior, along with the intended usage and mitigation strategy,
-is fully documented in:
-
-👉 `docs/mcp.md`
+This step answers **“What concepts exist in the system?”**
 
 ---
 
-## Repository Structure (Current)
+## ✅ Step B3 – User Flow Specifications
+- Defined core user flows under `spec/flows/`:
+  - Author publishes a post
+  - Reader views published posts
+  - Reader submits a comment
+  - Admin/Author moderates comments
+- Each flow specifies:
+  - Actor
+  - Preconditions
+  - Trigger
+  - Happy path
+  - Key alternate/error flows
+  - Resulting state changes
+- Flows are intentionally kept at the **behavioral level**, avoiding
+  UI, API, and database implementation details.
 
-```text
+These flows act as the bridge between **Domain (B2)** and **API Design (B4)**.
+
+This step answers **“How do users interact with the system?”**
+
+---
+
+## Next Steps
+
+### 🔜 Step B4 – API Contract Specification
+- Map each user flow to REST/API endpoints.
+- Define request/response contracts.
+- Specify authorization rules per endpoint.
+
+### 🔜 Step C – Implementation
+- Implement APIs using **Next.js App Router + TypeScript**.
+- Use **Supabase** for authentication and data persistence.
+- Deploy to **Vercel or Cloudflare Workers** (optional).
+
+---
+
+## Model Context Protocol (MCP)
+
+This project integrates **Model Context Protocol (MCP)** as part of the SDD
+workflow.
+
+- Context7 is configured as an external knowledge provider.
+- MCP usage, limitations, and justification are documented in
+  `docs/mcp.md`.
+
+---
+
+## Repository Structure
+
+```
 .
-├── app/                # Next.js App Router
-├── spec/               # SDD specifications (product, domain, flows, etc.)
-├── .speckit/           # SpecKit-inspired commands & templates
-├── docs/
-│   └── mcp.md          # MCP integration documentation
-├── screenshots/        # Evidence screenshots for the assignment
-└── README.md
+├─ spec/
+│  ├─ product.md
+│  ├─ domain.md
+│  └─ flows/
+│     ├─ author-create-post.md
+│     ├─ author-publish-post.md
+│     ├─ reader-view-posts.md
+│     ├─ reader-submit-comment.md
+│     └─ moderate-comment.md
+├─ docs/
+│  └─ mcp.md
+└─ README.md
 ```
 
-## Step B1 – Product Specification ✅
+---
 
-Step B1 marks the beginning of the actual **Spec Driven Development (SDD)** process.
-In this step, the product is defined **before any domain modeling or code implementation**.
+## Notes for Reviewers
 
-### Objective
-- Establish a clear and shared understanding of the product
-- Define scope, users, and core features
-- Create a single source of truth for subsequent specifications
+- This repository focuses on **SDD methodology**, not feature completeness.
+- Specifications are intentionally layered:
+  - Product → Domain → Flow → API → Code
+- External tools (MCP) may not always be available at runtime; limitations
+  are documented transparently.
 
 ---
 
-### SpecKit-Inspired Command Execution
+## Author
 
-The product specification is generated using a **SpecKit-inspired workflow**:
-
-- A command definition describes *what* should be generated
-- A Markdown template defines *how* the specification should be structured
-- GitHub Copilot Agent executes the command and fills in the content
-
-Key files involved:
-
-```text
-.speckit/
-├── commands/
-│   └── create-product-spec.yaml
-├── templates/
-│   └── product-spec.md
-spec/
-└── product.md
+Prepared as part of an internal SDD learning exercise.
