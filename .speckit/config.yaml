@@ -1,0 +1,9 @@
+project:
+  name: microblog-cms-sdd
+  description: Spec Driven Microblog CMS
+
+spec:
+  base_path: spec
+
+output:
+  base_path: .
