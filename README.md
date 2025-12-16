@@ -116,20 +116,33 @@ is fully documented in:
 └── README.md
 ```
 
----
+## Step B1 – Product Specification ✅
 
-## Next Steps
+Step B1 marks the beginning of the actual **Spec Driven Development (SDD)** process.
+In this step, the product is defined **before any domain modeling or code implementation**.
 
-With Steps **A1** and **A2** completed, the project is ready to move into
-the core Spec Driven Development phases:
-
-- Step B1: Product Specification
-- Step B2: Domain Modeling
-- Step B3: User Flows & API Contracts
-- Step C/D: Agent-assisted code generation and implementation
+### Objective
+- Establish a clear and shared understanding of the product
+- Define scope, users, and core features
+- Create a single source of truth for subsequent specifications
 
 ---
 
-📌 **Status**
-- Step A1 – Completed
-- Step A2 – Completed
+### SpecKit-Inspired Command Execution
+
+The product specification is generated using a **SpecKit-inspired workflow**:
+
+- A command definition describes *what* should be generated
+- A Markdown template defines *how* the specification should be structured
+- GitHub Copilot Agent executes the command and fills in the content
+
+Key files involved:
+
+```text
+.speckit/
+├── commands/
+│   └── create-product-spec.yaml
+├── templates/
+│   └── product-spec.md
+spec/
+└── product.md

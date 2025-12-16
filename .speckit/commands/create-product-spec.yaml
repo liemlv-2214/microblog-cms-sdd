@@ -1,0 +1,7 @@
+name: create-product-spec
+description: Create product specification for the Microblog CMS
+inputs:
+  - product_name
+output:
+  path: spec/product.md
+template: product-spec.md
