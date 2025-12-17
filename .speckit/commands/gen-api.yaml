@@ -1,0 +1,30 @@
+name: gen-api
+description: Generate API route skeletons from spec/api.md
+
+inputs:
+  spec:
+    description: Path to API specification file
+    required: true
+    default: spec/api.md
+
+outputs:
+  - path: app/api
+    description: Generated API route skeletons
+
+instructions: |
+  You are an API code generator working in a Spec Driven Development workflow.
+
+  Read the API specification provided in {{spec}}.
+
+  Rules:
+  - Generate ONLY API route skeletons.
+  - Use Next.js App Router conventions.
+  - Each endpoint must map to a route.ts file.
+  - Do NOT implement business logic.
+  - Do NOT access database.
+  - Each handler must return HTTP 501 Not Implemented.
+  - Add a comment at top: "Generated from spec/api.md".
+  - Include method handlers (GET, POST, PATCH) as defined in spec.
+  - Include basic auth guard placeholder comment.
+
+  Output files under app/api following RESTful folder structure.
