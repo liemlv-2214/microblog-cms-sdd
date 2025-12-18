@@ -169,3 +169,134 @@ export async function POST(request: NextRequest) {
     { status: 201 }
   )
 }
+
+/**
+ * GET /api/posts - List Published Posts
+ * Public endpoint (no authentication required)
+ * Returns paginated, filterable list of published posts
+ * 
+ * Spec: spec/api.md - GET /api/posts
+ */
+export async function GET(request: NextRequest) {
+  // 1. PARSE QUERY PARAMETERS
+  const { searchParams } = new URL(request.url)
+  
+  const page = parseInt(searchParams.get('page') || '1', 10)
+  const limit = parseInt(searchParams.get('limit') || '10', 10)
+  const categorySlug = searchParams.get('category')
+  const tagName = searchParams.get('tag')
+  const searchQuery = searchParams.get('search')
+  const sort = searchParams.get('sort') || 'newest'
+
+  // 2. VALIDATE QUERY PARAMETERS
+  if (isNaN(page) || page < 1) {
+    return badRequest('Page must be a positive integer')
+  }
+
+  if (isNaN(limit) || limit < 1 || limit > 50) {
+    return badRequest('Limit must be between 1 and 50')
+  }
+
+  if (sort !== 'newest' && sort !== 'oldest') {
+    return badRequest('Sort must be "newest" or "oldest"')
+  }
+
+  // 3. BUILD BASE QUERY FOR PUBLISHED POSTS
+  let query = supabase
+    .from('posts')
+    .select(
+      `
+        id,
+        title,
+        slug,
+        author_id,
+        status,
+        published_at,
+        created_at,
+        updated_at,
+        users!author_id (id, email),
+        post_categories (category_id, categories (id, slug)),
+        post_tags (tag_name)
+      `,
+      { count: 'exact' }
+    )
+    .eq('status', 'published')
+    .is('deleted_at', null)
+
+  // 4. APPLY SEARCH FILTER
+  if (searchQuery) {
+    query = query.or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`)
+  }
+
+  // 5. APPLY SORTING
+  query = query.order('published_at', { ascending: sort === 'oldest' })
+
+  // 6. APPLY PAGINATION
+  const from = (page - 1) * limit
+  const to = from + limit - 1
+  query = query.range(from, to)
+
+  // 7. EXECUTE QUERY
+  const { data: posts, error: queryError, count } = await query
+
+  if (queryError) {
+    console.error('Failed to fetch posts:', queryError)
+    return NextResponse.json(
+      { error: 'Failed to fetch posts' },
+      { status: 500 }
+    )
+  }
+
+  // 8. FILTER BY CATEGORY (client-side after fetch, as Supabase filter is complex)
+  let filteredPosts = posts || []
+  
+  if (categorySlug) {
+    filteredPosts = filteredPosts.filter((post: any) =>
+      post.post_categories?.some((pc: any) => pc.categories?.slug === categorySlug)
+    )
+  }
+
+  // 9. FILTER BY TAG (client-side after fetch)
+  if (tagName) {
+    filteredPosts = filteredPosts.filter((post: any) =>
+      post.post_tags?.some((pt: any) => pt.tag_name?.toLowerCase().includes(tagName.toLowerCase()))
+    )
+  }
+
+  // 10. TRANSFORM RESPONSE
+  const transformedPosts = filteredPosts.map((post: any) => ({
+    id: post.id,
+    title: post.title,
+    slug: post.slug,
+    author: {
+      id: post.users?.id,
+      email: post.users?.email,
+    },
+    status: post.status,
+    published_at: post.published_at,
+    comment_count: 0, // TODO: Fetch comment count when C3.5/C3.6 ready
+    categories: post.post_categories?.map((pc: any) => ({
+      id: pc.category_id,
+      slug: pc.categories?.slug,
+    })) || [],
+    tags: post.post_tags?.map((pt: any) => ({
+      name: pt.tag_name,
+    })) || [],
+  }))
+
+  // 11. RETURN RESPONSE WITH PAGINATION
+  const totalPages = Math.ceil((count || 0) / limit)
+
+  return NextResponse.json(
+    {
+      data: transformedPosts,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        total_pages: totalPages,
+      },
+    },
+    { status: 200 }
+  )
+}
