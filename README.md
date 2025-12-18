@@ -209,16 +209,146 @@ Each protected route follows a consistent pattern:
 3. Defer ownership and business rules to STEP C3
 4. Return `501 Not Implemented`
 
-### Outcome
+---
 
-STEP C2 establishes a **secure API boundary** that guarantees:
-- Only authenticated users can access protected endpoints
-- Only authorized roles can perform restricted actions
-- The system is ready for business logic in STEP C3
+# Step C3 – Business Logic Implementation (Spec → Code)
 
-This completes the progression:
+STEP C3 implements **business logic for each API endpoint** strictly following:
 
-**spec → API contract → route skeleton → auth guards**
+* API contracts defined in `spec/api.md`
+* Behaviors defined in **STEP B3 – User Flows**
+
+Each sub-step focuses on **one API endpoint only** to:
+
+* Avoid scope creep
+* Keep changes reviewable
+* Preserve Spec Driven Development discipline
+
+---
+
+## ✅ C3.1 – Create Draft Post
+
+**API:** `POST /api/posts`
+
+* Implemented draft post creation logic
+* Enforced authentication & role (`editor`, `admin`)
+* Validated title & content
+* Generated slug (no uniqueness check at draft stage)
+* Categories & tags optional for drafts
+* Inserted post with `status = draft`
+
+**Related spec:**
+
+* `spec/api.md` – Create Post
+* `spec/flows/author-create-post.md`
+
+---
+
+## ✅ C3.2 – Publish Post
+
+**API:** `PATCH /api/posts/{id}/publish`
+
+* Validated post exists and is in draft status
+* Enforced ownership (author) or admin role
+* Validated publish rules:
+
+  * Content length ≥ 100
+  * At least one category assigned
+* Enforced slug uniqueness at publish time
+* Transitioned state: `draft → published`
+* Set `published_at` timestamp
+
+**Related spec:**
+
+* `spec/api.md` – Publish Post
+* `spec/flows/author-publish-post.md`
+
+---
+
+## ✅ C3.3 – List Published Posts
+
+**API:** `GET /api/posts`
+
+* Public endpoint (no authentication)
+* Returned only published posts
+* Supported pagination & sorting
+* Included author summary, categories, tags
+* Excluded draft and unpublished content
+
+**Related spec:**
+
+* `spec/api.md` – List Posts
+* `spec/flows/reader-view-posts.md`
+
+---
+
+## ✅ C3.4 – Get Post Detail
+
+**API:** `GET /api/posts/{slug}`
+
+* Public endpoint
+* Fetched post by slug
+* Ensured post is published
+* Included full content, author, categories, tags
+* Returned 404 for non-existent or unpublished posts
+
+**Related spec:**
+
+* `spec/api.md` – Get Post Detail
+* `spec/flows/reader-view-posts.md`
+
+---
+
+## ✅ C3.5 – Submit Comment
+
+**API:** `POST /api/posts/{id}/comments`
+
+* Enforced authentication (`viewer`, `editor`, `admin`)
+* Validated comment content (1–5000 chars)
+* Ensured post exists and is published
+* Supported optional parent comment (single-level replies)
+* Created comment with `status = pending`
+
+**Related spec:**
+
+* `spec/api.md` – Submit Comment
+* `spec/flows/reader-submit-comment.md`
+
+---
+
+## ✅ C3.6 – List Approved Comments
+
+**API:** `GET /api/posts/{id}/comments`
+
+* Public endpoint
+* Returned only approved comments
+* Supported pagination and sorting
+* Included single-level nested replies
+* Omitted moderation-only fields
+
+**Related spec:**
+
+* `spec/api.md` – List Comments
+* `spec/flows/reader-view-posts.md`
+
+---
+
+## ✅ C3.7 – Moderate Comment
+
+**API:** `PATCH /api/comments/{id}/moderate`
+
+* Enforced authentication (`admin`, `editor`)
+* Admin can moderate any comment
+* Editor can moderate comments on own posts only
+* Validated comment exists and is pending
+* Prevented double moderation (`409 Conflict`)
+* Updated status to `approved`, `rejected`, or `spam`
+* Returned response matching API spec exactly
+
+**Related spec:**
+
+* `spec/api.md` – Moderate Comment
+* `spec/flows/moderate-comment.md`
 
 ---
 
