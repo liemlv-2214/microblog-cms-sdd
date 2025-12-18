@@ -51,7 +51,8 @@ exercise.
 ---
 
 ## ✅ Step B1 – Product Specification
-- Defined product vision, goals, and success criteria.
+- Define template `create-product-spec.yaml`
+- Defined product vision, goals, and success criteria. 
 - Identifed target users (Admin, Editor, Reader).
 - Documented core features and explicit non-goals for v1.
 - Created `spec/product.md` as the single source of truth for product intent.
@@ -66,6 +67,7 @@ exercise.
 ---
 
 ## ✅ Step B2 – Domain Modeling
+- Define template `create-domain-spec.yaml`
 - Created a conceptual domain model in `spec/domain.md`.
 - Identified core domain entities: User, Post, Category, Tag, Comment.
 - Modeled lifecycle states and separated domain from implementation.
@@ -81,6 +83,7 @@ exercise.
 ---
 
 ## ✅ Step B3 – User Flow Specifications
+- Define template `create-flow-spec.yaml`
 - Defined core user flows under `spec/flows/`.
 - Covered author, reader, and moderation interactions.
 
