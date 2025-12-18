@@ -3,7 +3,13 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, hasRole, forbidden, badRequest, notFound, conflict } from '@/lib/auth'
-import { supabase } from '@/lib/db/supabase'
+import {
+  getCommentById,
+  getPostForOwnershipCheck,
+  moderateComment,
+  formatApprovedComment,
+  formatRejectedComment,
+} from '@/lib/comments/persistence'
 
 /**
  * PATCH - Moderate Comment
@@ -57,12 +63,8 @@ export async function PATCH(
     )
   }
 
-  // Step 3: Fetch comment by ID
-  const { data: comment, error: commentError } = await supabase
-    .from('comments')
-    .select('id, post_id, author_id, content, status, created_at')
-    .eq('id', commentId)
-    .single()
+  // Step 3: Fetch comment by ID (via persistence layer)
+  const { data: comment, error: commentError } = await getCommentById(commentId)
 
   if (commentError || !comment) {
     return notFound('Comment not found')
@@ -73,12 +75,10 @@ export async function PATCH(
     return conflict('Comment already moderated')
   }
 
-  // Step 5: Fetch post to check ownership and get author info
-  const { data: post, error: postError } = await supabase
-    .from('posts')
-    .select('id, author_id')
-    .eq('id', comment.post_id)
-    .single()
+  // Step 5: Fetch post to check ownership (via persistence layer)
+  const { data: post, error: postError } = await getPostForOwnershipCheck(
+    comment.post_id
+  )
 
   if (postError || !post) {
     console.error('Post fetch error:', postError)
@@ -106,22 +106,11 @@ export async function PATCH(
     }
   }
 
-  // Step 7: Update comment status
-  const updateData: Record<string, unknown> = { status }
-
-  // Set approved_at timestamp when approving
-  if (status === 'approved') {
-    updateData.approved_at = new Date().toISOString()
-  }
-
-  const { data: updatedComment, error: updateError } = await supabase
-    .from('comments')
-    .update(updateData)
-    .eq('id', commentId)
-    .select(
-      'id, post_id, author_id, content, status, created_at, approved_at, users!author_id (id, email)'
-    )
-    .single()
+  // Step 7: Update comment status (via persistence layer)
+  const { data: updatedComment, error: updateError } = await moderateComment(
+    commentId,
+    status as 'approved' | 'rejected' | 'spam'
+  )
 
   if (updateError || !updatedComment) {
     console.error('Comment update error:', updateError)
@@ -134,25 +123,9 @@ export async function PATCH(
   // Step 8: Return 200 OK with moderation result
   // Response format varies based on status
   if (status === 'approved') {
-    return NextResponse.json({
-      id: updatedComment.id,
-      post_id: updatedComment.post_id,
-      author: {
-        id: (updatedComment.users as any)?.[0]?.id || '',
-        email: (updatedComment.users as any)?.[0]?.email || '',
-      },
-      content: updatedComment.content,
-      status: updatedComment.status,
-      created_at: updatedComment.created_at,
-      approved_at: updatedComment.approved_at,
-    })
+    return NextResponse.json(formatApprovedComment(updatedComment))
   }
 
   // For rejected or spam: return minimal response
-  return NextResponse.json({
-    id: updatedComment.id,
-    post_id: updatedComment.post_id,
-    content: updatedComment.content,
-    status: updatedComment.status,
-  })
+  return NextResponse.json(formatRejectedComment(updatedComment))
 }

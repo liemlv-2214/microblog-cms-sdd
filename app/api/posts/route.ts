@@ -10,7 +10,14 @@ import {
   validateTags,
   slugify,
 } from '@/lib/posts/validation'
-import { supabase } from '@/lib/db/supabase'
+import {
+  createDraftPost,
+  linkCategoriesToPost,
+  linkTagsToPost,
+  listPublishedPosts,
+  countPublishedPosts,
+  formatPostResponse,
+} from '@/lib/posts/persistence'
 
 interface CreatePostRequest {
   title: unknown
@@ -80,21 +87,13 @@ export async function POST(request: NextRequest) {
   // This allows users to save drafts with the same title without conflicts.
   const slug = slugify(body.title as string)
 
-  // 9. CREATE POST IN DATABASE
-  const { data: post, error: createError } = await supabase
-    .from('posts')
-    .insert({
-      title: body.title,
-      content: body.content,
-      slug,
-      author_id: auth.user.id,
-      status: 'draft',
-      published_at: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .select()
-    .single()
+  // 9. CREATE POST IN DATABASE (via persistence layer)
+  const { data: post, error: createError } = await createDraftPost({
+    title: body.title as string,
+    content: body.content as string,
+    slug,
+    author_id: auth.user.id,
+  })
 
   if (createError || !post) {
     console.error('Failed to create post:', createError)
@@ -115,13 +114,10 @@ export async function POST(request: NextRequest) {
       (categoryId) => ({
         post_id: post.id,
         category_id: categoryId,
-        created_at: new Date().toISOString(),
       })
     )
 
-    const { error: categoryError } = await supabase
-      .from('post_categories')
-      .insert(categoryRecords)
+    const { error: categoryError } = await linkCategoriesToPost(categoryRecords)
 
     if (categoryError) {
       console.error('Failed to link categories:', categoryError)
@@ -138,12 +134,9 @@ export async function POST(request: NextRequest) {
     const tagRecords = tags.map((tagName) => ({
       post_id: post.id,
       tag_name: tagName,
-      created_at: new Date().toISOString(),
     }))
 
-    const { error: tagError } = await supabase
-      .from('post_tags')
-      .insert(tagRecords)
+    const { error: tagError } = await linkTagsToPost(tagRecords)
 
     if (tagError) {
       console.error('Failed to link tags:', tagError)
@@ -152,22 +145,11 @@ export async function POST(request: NextRequest) {
   }
 
   // 12. RETURN SUCCESS RESPONSE (201 Created)
-  return NextResponse.json(
-    {
-      id: post.id,
-      slug: post.slug,
-      title: post.title,
-      content: post.content,
-      author_id: post.author_id,
-      status: post.status,
-      published_at: post.published_at,
-      created_at: post.created_at,
-      updated_at: post.updated_at,
-      categories: body.categories,
-      tags: body.tags || [],
-    },
-    { status: 201 }
-  )
+  const formatted = formatPostResponse(post, false) as Record<string, unknown>
+  formatted.categories = body.categories || []
+  formatted.tags = body.tags || []
+
+  return NextResponse.json(formatted, { status: 201 })
 }
 
 /**
@@ -201,43 +183,15 @@ export async function GET(request: NextRequest) {
     return badRequest('Sort must be "newest" or "oldest"')
   }
 
-  // 3. BUILD BASE QUERY FOR PUBLISHED POSTS
-  let query = supabase
-    .from('posts')
-    .select(
-      `
-        id,
-        title,
-        slug,
-        author_id,
-        status,
-        published_at,
-        created_at,
-        updated_at,
-        users!author_id (id, email),
-        post_categories (category_id, categories (id, slug)),
-        post_tags (tag_name)
-      `,
-      { count: 'exact' }
-    )
-    .eq('status', 'published')
-    .is('deleted_at', null)
+  // 3. FETCH PUBLISHED POSTS FROM PERSISTENCE LAYER
+  const sortOrder: 'asc' | 'desc' = sort === 'oldest' ? 'asc' : 'desc'
+  const offset = (page - 1) * limit
 
-  // 4. APPLY SEARCH FILTER
-  if (searchQuery) {
-    query = query.or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`)
-  }
-
-  // 5. APPLY SORTING
-  query = query.order('published_at', { ascending: sort === 'oldest' })
-
-  // 6. APPLY PAGINATION
-  const from = (page - 1) * limit
-  const to = from + limit - 1
-  query = query.range(from, to)
-
-  // 7. EXECUTE QUERY
-  const { data: posts, error: queryError, count } = await query
+  const { data: posts, error: queryError } = await listPublishedPosts(
+    offset,
+    limit,
+    sortOrder
+  )
 
   if (queryError) {
     console.error('Failed to fetch posts:', queryError)
@@ -247,7 +201,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // 8. FILTER BY CATEGORY (client-side after fetch, as Supabase filter is complex)
+  // 4. FILTER BY CATEGORY (client-side after fetch, as Supabase filter is complex)
   let filteredPosts = posts || []
   
   if (categorySlug) {
@@ -256,21 +210,40 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // 9. FILTER BY TAG (client-side after fetch)
+  // 5. FILTER BY TAG (client-side after fetch)
   if (tagName) {
     filteredPosts = filteredPosts.filter((post: any) =>
       post.post_tags?.some((pt: any) => pt.tag_name?.toLowerCase().includes(tagName.toLowerCase()))
     )
   }
 
-  // 10. TRANSFORM RESPONSE
+  // 6. APPLY SEARCH FILTER (client-side after fetch)
+  if (searchQuery) {
+    filteredPosts = filteredPosts.filter((post: any) =>
+      post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.content?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }
+
+  // 7. GET TOTAL COUNT FOR PAGINATION
+  const { count, error: countError } = await countPublishedPosts()
+
+  if (countError) {
+    console.error('Failed to count posts:', countError)
+    return NextResponse.json(
+      { error: 'Failed to fetch posts' },
+      { status: 500 }
+    )
+  }
+
+  // 8. TRANSFORM RESPONSE
   const transformedPosts = filteredPosts.map((post: any) => ({
     id: post.id,
     title: post.title,
     slug: post.slug,
     author: {
-      id: post.users?.id,
-      email: post.users?.email,
+      id: (Array.isArray(post.users) ? post.users[0] : post.users)?.id,
+      email: (Array.isArray(post.users) ? post.users[0] : post.users)?.email,
     },
     status: post.status,
     published_at: post.published_at,
@@ -280,11 +253,12 @@ export async function GET(request: NextRequest) {
       slug: pc.categories?.slug,
     })) || [],
     tags: post.post_tags?.map((pt: any) => ({
-      name: pt.tag_name,
+      id: pt.tags?.id,
+      slug: pt.tags?.slug,
     })) || [],
   }))
 
-  // 11. RETURN RESPONSE WITH PAGINATION
+  // 9. RETURN RESPONSE WITH PAGINATION
   const totalPages = Math.ceil((count || 0) / limit)
 
   return NextResponse.json(

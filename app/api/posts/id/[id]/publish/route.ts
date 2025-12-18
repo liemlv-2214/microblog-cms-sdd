@@ -5,6 +5,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, hasRole, forbidden, badRequest, notFound, conflict } from '@/lib/auth'
 import { validateContentForPublish, slugify } from '@/lib/posts/validation'
 import { supabase } from '@/lib/db/supabase'
+import {
+  getPostById,
+  getPostBySlug,
+  publishPost,
+  formatPostResponse,
+} from '@/lib/posts/persistence'
 
 /**
  * Authentication: Required (editor for own posts, admin for any)
@@ -32,13 +38,8 @@ export async function PATCH(
     return forbidden('Only editors and admins can publish posts')
   }
 
-  // 3. FETCH POST
-  const { data: post, error: fetchError } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('id', postId)
-    .is('deleted_at', null)
-    .single()
+  // 3. FETCH POST (via persistence layer)
+  const { data: post, error: fetchError } = await getPostById(postId)
 
   if (fetchError || !post) {
     return notFound('Post not found')
@@ -60,7 +61,7 @@ export async function PATCH(
     return badRequest(contentValidation.error || 'Invalid content for publishing')
   }
 
-  // 7. CHECK CATEGORIES (must have at least one)
+  // 7. CHECK CATEGORIES (must have at least one) - TODO: Move to persistence query
   const { data: categories, error: categoriesError } = await supabase
     .from('post_categories')
     .select('category_id')
@@ -78,26 +79,34 @@ export async function PATCH(
 
   // Check for slug uniqueness (excluding current post)
   while (slugAttempt < maxAttempts) {
-    const { data: existing, error: slugError } = await supabase
-      .from('posts')
-      .select('id')
-      .eq('slug', slug)
-      .neq('id', postId)
-      .is('deleted_at', null)
-      .limit(1)
+    const { data: existing, error: slugError } = await getPostBySlug(slug)
 
+    // getPostBySlug uses .single() which returns error if not found (PGRST116)
     if (slugError) {
-      console.error('Error checking slug uniqueness:', slugError)
-      return NextResponse.json(
-        { error: 'Failed to validate slug uniqueness' },
-        { status: 500 }
-      )
+      // PGRST116 = not found; slug is unique
+      if (slugError.code === 'PGRST116') {
+        break
+      }
+      
+      // Unknown error
+      if (slugAttempt === 0) {
+        console.error('Error checking slug uniqueness:', slugError)
+        return NextResponse.json(
+          { error: 'Failed to validate slug uniqueness' },
+          { status: 500 }
+        )
+      }
+      
+      break
     }
 
-    if (!existing || existing.length === 0) {
-      break // Slug is unique
+    // Slug exists; check if it's the current post
+    if (existing && existing.id === postId) {
+      // Same post, slug is available (was draft, now publishing)
+      break
     }
 
+    // Slug belongs to different post; try next variant
     slugAttempt++
     slug = `${baseSlug}-${slugAttempt}`
   }
@@ -106,54 +115,28 @@ export async function PATCH(
     return conflict('Could not generate unique slug for this post')
   }
 
-  // 9. UPDATE POST TO PUBLISHED STATE
-  const now = new Date().toISOString()
-  const { data: updatedPost, error: updateError } = await supabase
-    .from('posts')
-    .update({
-      status: 'published',
-      slug,
-      published_at: now,
-      updated_at: now,
-    })
-    .eq('id', postId)
-    .select()
-    .single()
+  // 9. UPDATE POST TO PUBLISHED STATE (via persistence layer)
+  const { data: updatedPost, error: updateError } = await publishPost(postId, slug)
 
   if (updateError || !updatedPost) {
-    console.error('Failed to update post:', updateError)
+    console.error('Failed to publish post:', updateError)
     return NextResponse.json(
       { error: 'Failed to publish post' },
       { status: 500 }
     )
   }
 
-  // 10. FETCH CATEGORIES AND TAGS FOR RESPONSE
-  const { data: categoryRecords } = await supabase
-    .from('post_categories')
-    .select('category_id')
-    .eq('post_id', postId)
-
+  // 10. FORMAT AND RETURN SUCCESS RESPONSE (200 OK)
+  const formatted = formatPostResponse(updatedPost, false) as Record<string, unknown>
+  formatted.categories = categories?.map((c: any) => c.category_id) || []
+  
+  // TODO: Fetch tags from persistence layer instead of separate query
   const { data: tagRecords } = await supabase
     .from('post_tags')
     .select('tag_name')
     .eq('post_id', postId)
 
-  // 11. RETURN SUCCESS RESPONSE (200 OK)
-  return NextResponse.json(
-    {
-      id: updatedPost.id,
-      slug: updatedPost.slug,
-      title: updatedPost.title,
-      content: updatedPost.content,
-      author_id: updatedPost.author_id,
-      status: updatedPost.status,
-      published_at: updatedPost.published_at,
-      created_at: updatedPost.created_at,
-      updated_at: updatedPost.updated_at,
-      categories: categoryRecords?.map((c: { category_id: string }) => c.category_id) || [],
-      tags: tagRecords?.map((t: { tag_name: string }) => t.tag_name) || [],
-    },
-    { status: 200 }
-  )
+  formatted.tags = tagRecords?.map((t: any) => t.tag_name) || []
+
+  return NextResponse.json(formatted, { status: 200 })
 }

@@ -4,11 +4,19 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, badRequest, notFound } from '@/lib/auth'
-import { supabase } from '@/lib/db/supabase'
 import {
   validateCommentContent,
   validateParentCommentId,
 } from '@/lib/comments/validation'
+import {
+  getPublishedPost,
+  getApprovedComment,
+  createPendingComment,
+  listApprovedTopLevelComments,
+  countApprovedTopLevelComments,
+  getApprovedReplies,
+  formatCommentWithReplies,
+} from '@/lib/comments/persistence'
 
 /**
  * POST - Submit Comment
@@ -67,11 +75,7 @@ export async function POST(
   }
 
   // Step 5: Verify post exists and is published
-  const { data: post, error: postError } = await supabase
-    .from('posts')
-    .select('id, status')
-    .eq('id', postId)
-    .single()
+  const { data: post, error: postError } = await getPublishedPost(postId)
 
   if (postError || !post) {
     return notFound('Post not found')
@@ -83,12 +87,10 @@ export async function POST(
 
   // Step 6: Verify parent comment if provided
   if (parent_comment_id) {
-    const { data: parentComment, error: parentError } = await supabase
-      .from('comments')
-      .select('id, status')
-      .eq('id', parent_comment_id)
-      .eq('post_id', postId)
-      .single()
+    const { data: parentComment, error: parentError } = await getApprovedComment(
+      parent_comment_id as string,
+      postId
+    )
 
     if (parentError || !parentComment) {
       return notFound('Parent comment not found')
@@ -99,18 +101,13 @@ export async function POST(
     }
   }
 
-  // Step 7: Create comment with status=pending
-  const { data: comment, error: createError } = await supabase
-    .from('comments')
-    .insert({
-      post_id: postId,
-      author_id: userId,
-      content: (content as string).trim(),
-      status: 'pending',
-      parent_comment_id: (typeof parent_comment_id === 'string' ? parent_comment_id : null) || null,
-    })
-    .select('id, post_id, author_id, content, status, parent_comment_id, created_at, approved_at')
-    .single()
+  // Step 7: Create comment with status=pending (via persistence layer)
+  const { data: comment, error: createError } = await createPendingComment({
+    post_id: postId,
+    author_id: userId,
+    content: (content as string).trim(),
+    parent_comment_id: (typeof parent_comment_id === 'string' ? parent_comment_id : null) || null,
+  })
 
   if (createError || !comment) {
     console.error('Comment creation error:', createError)
@@ -120,20 +117,9 @@ export async function POST(
     )
   }
 
-  // Fetch author details for response
-  const { data: author, error: authorError } = await supabase
-    .from('users')
-    .select('id, email')
-    .eq('id', userId)
-    .single()
-
-  if (authorError || !author) {
-    console.error('Author fetch error:', authorError)
-    return NextResponse.json(
-      { error: 'Failed to fetch author details' },
-      { status: 500 }
-    )
-  }
+  // Extract author from response (joined users table)
+  const commentUsers = comment.users as Array<{ id: string; email: string }> | undefined
+  const author = Array.isArray(commentUsers) ? commentUsers[0] : undefined
 
   // Return 201 Created with comment details
   return NextResponse.json(
@@ -141,8 +127,8 @@ export async function POST(
       id: comment.id,
       post_id: comment.post_id,
       author: {
-        id: author.id,
-        email: author.email,
+        id: author?.id || '',
+        email: author?.email || '',
       },
       content: comment.content,
       status: comment.status,
@@ -204,11 +190,7 @@ export async function GET(
   }
 
   // Step 2: Verify post exists and is published
-  const { data: post, error: postError } = await supabase
-    .from('posts')
-    .select('id, status')
-    .eq('id', postId)
-    .single()
+  const { data: post, error: postError } = await getPublishedPost(postId)
 
   if (postError || !post) {
     return notFound('Post not found')
@@ -218,21 +200,15 @@ export async function GET(
     return notFound('Post not found')
   }
 
-  // Step 3: Fetch approved top-level comments (paginated)
-  // SORTING BEHAVIOR: The 'sort' parameter affects only top-level comments.
-  // Nested replies are always ordered oldest-first (created_at ASC) for consistency.
+  // Step 3: Fetch approved top-level comments (paginated) via persistence layer
   const offset = (page - 1) * limit
 
-  const { data: comments, error: commentsError } = await supabase
-    .from('comments')
-    .select(
-      'id, post_id, author_id, content, status, parent_comment_id, created_at, users!author_id (id, email)'
-    )
-    .eq('post_id', postId)
-    .eq('status', 'approved')
-    .is('parent_comment_id', null)
-    .order('created_at', { ascending: sort === 'oldest' })
-    .range(offset, offset + limit - 1)
+  const { data: comments, error: commentsError } = await listApprovedTopLevelComments(
+    postId,
+    offset,
+    limit,
+    sort === 'newest' ? 'desc' : 'asc'
+  )
 
   if (commentsError) {
     console.error('Comments fetch error:', commentsError)
@@ -271,15 +247,10 @@ export async function GET(
 
   const commentsWithReplies = await Promise.all(
     (comments || []).map(async (comment: CommentData) => {
-      const { data: replies, error: repliesError } = await supabase
-        .from('comments')
-        .select(
-          'id, author_id, content, created_at, users!author_id (id, email)'
-        )
-        .eq('post_id', postId)
-        .eq('parent_comment_id', comment.id)
-        .eq('status', 'approved')
-        .order('created_at', { ascending: true })
+      const { data: replies, error: repliesError } = await getApprovedReplies(
+        postId,
+        comment.id
+      )
 
       if (repliesError) {
         console.error('Replies fetch error:', repliesError)
@@ -287,53 +258,27 @@ export async function GET(
         // Rationale: Top-level comments are primary content; replies are secondary.
         // A failure to fetch replies should not prevent showing the main comment.
         // Client can retry fetching replies separately if needed.
-        return {
-          id: comment.id,
-          post_id: comment.post_id,
-          author: {
-            id: comment.users?.[0]?.id || '',
-            email: comment.users?.[0]?.email || '',
-          },
-          content: comment.content,
-          status: comment.status,
-          parent_comment_id: comment.parent_comment_id,
-          created_at: comment.created_at,
-          replies: [],
-        }
+        return formatCommentWithReplies(comment as unknown as Record<string, unknown>)
       }
 
-      return {
-        id: comment.id,
-        post_id: comment.post_id,
+      const formattedReplies = (replies || []).map((reply: ReplyData) => ({
+        id: reply.id,
         author: {
-          id: comment.users?.[0]?.id || '',
-          email: comment.users?.[0]?.email || '',
+          id: (Array.isArray(reply.users) ? reply.users[0] : reply.users)?.id || '',
+          email: (Array.isArray(reply.users) ? reply.users[0] : reply.users)?.email || '',
         },
-        content: comment.content,
-        status: comment.status,
-        parent_comment_id: comment.parent_comment_id,
-        created_at: comment.created_at,
-        replies:
-          (replies || []).map((reply: ReplyData) => ({
-            id: reply.id,
-            author: {
-              id: reply.users?.[0]?.id || '',
-              email: reply.users?.[0]?.email || '',
-            },
-            content: reply.content,
-            created_at: reply.created_at,
-          })) || [],
-      }
+        content: reply.content,
+        created_at: reply.created_at,
+      }))
+
+      return formatCommentWithReplies(comment as unknown as Record<string, unknown>, formattedReplies)
     })
   )
 
   // Step 5: Get total count for pagination
-  const { count: totalCount, error: countError } = await supabase
-    .from('comments')
-    .select('id', { count: 'exact', head: true })
-    .eq('post_id', postId)
-    .eq('status', 'approved')
-    .is('parent_comment_id', null)
+  const { count: totalCount, error: countError } = await countApprovedTopLevelComments(
+    postId
+  )
 
   if (countError) {
     console.error('Count error:', countError)
