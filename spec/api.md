@@ -54,10 +54,13 @@
 {
   "title": "string (required, 5-200 chars)",
   "content": "string (required for draft, can be partial)",
-  "categories": ["uuid-1"],
-  "tags": ["string (optional, auto-create if not found)"]
+  "category_ids": ["uuid-1"],
+  "tag_ids": ["uuid-2", "uuid-3"]
 }
 ```
+
+**Validation:**
+- category_ids and tag_ids: all referenced categories and tags must exist in the system
 
 **Success Response:** `201 Created`
 ```json
@@ -71,13 +74,13 @@
   "published_at": null,
   "created_at": "2024-12-16T10:30:00Z",
   "updated_at": "2024-12-16T10:30:00Z",
-  "categories": ["uuid-1", "uuid-2"],
-  "tags": ["javascript", "nextjs"]
+  "category_ids": ["uuid-1", "uuid-2"],
+  "tag_ids": ["uuid-3", "uuid-4"]
 }
 ```
 
 **Error Responses:**
-- `400 Bad Request` – Missing required field, invalid data, or validation failure, invalid category or tag reference
+- `400 Bad Request` – Missing required field, invalid data, or validation failure (category_ids or tag_ids reference non-existent entities)
 - `409 Conflict` – Slug already exists
 - `401 Unauthorized` – Invalid token
 - `403 Forbidden` – User is not editor/admin
@@ -116,13 +119,13 @@ id: uuid (post id)
   "published_at": "2024-12-16T10:35:00Z",
   "created_at": "2024-12-16T10:30:00Z",
   "updated_at": "2024-12-16T10:35:00Z",
-  "categories": ["uuid-1"],
-  "tags": ["javascript"]
+  "category_ids": ["uuid-1"],
+  "tag_ids": ["uuid-2"]
 }
 ```
 
 **Error Responses:**
-- `400 Bad Request` – Post content validation failed (min 100 chars), no categories assigned, category is not active, invalid tag reference
+- `400 Bad Request` – Post content validation failed (min 100 chars), no categories assigned, category is not active, tag_ids or category_ids reference non-existent entities
 - `404 Not Found` – Post not found or already deleted
 - `409 Conflict` – Post is not in draft status
 - `401 Unauthorized` – Invalid token
@@ -165,17 +168,13 @@ sort: "newest" | "oldest" (default: newest)
       "status": "published",
       "published_at": "2024-12-16T10:35:00Z",
       "comment_count": 3,
-      "categories": [
-        {
-            "id": "uuid",
-            "slug": "category-slug"
-        }
+      "category_ids": [
+        "uuid-1",
+        "uuid-2"
       ],
-      "tags": [
-        {
-            "id": "uuid",
-            "slug": "javascript"
-        }
+      "tag_ids": [
+        "uuid-3",
+        "uuid-4"
       ]
     }
   ],
@@ -222,19 +221,11 @@ slug: string (post slug)
   "published_at": "2024-12-16T10:35:00Z",
   "created_at": "2024-12-16T10:30:00Z",
   "comment_count": 3,
-  "categories": [
-    {
-      "id": "uuid",
-      "name": "Technology",
-      "slug": "technology"
-    }
+  "category_ids": [
+    "uuid-1"
   ],
-  "tags": [
-    {
-      "id": "uuid",
-      "name": "javascript",
-      "slug": "javascript"
-    }
+  "tag_ids": [
+    "uuid-2"
   ]
 }
 ```

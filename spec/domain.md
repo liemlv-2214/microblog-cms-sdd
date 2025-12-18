@@ -59,21 +59,25 @@ Represents a unit of authored content.
 ---
 
 ### Category
-Represents a high-level content grouping.
+Represents a high-level content grouping. **First-class entity** managed independently of posts.
 
 - id
 - name
 - slug
 - is_active
 
+**Constraint:** Posts may only reference **existing** categories (no auto-creation).
+
 ---
 
 ### Tag
-Represents a flexible content label.
+Represents a flexible content label. **First-class entity** managed independently of posts.
 
 - id
 - name
 - slug
+
+**Constraint:** Posts may only reference **existing** tags (no auto-creation).
 
 ---
 
@@ -135,7 +139,8 @@ Join entity between Post and Tag.
 3. Only published posts are visible to readers
 4. All comments require moderation before visibility
 5. Draft posts are visible only to author and admins
-6. Categories and tags are used only for published posts
+6. Posts may only reference categories and tags that already exist in the system
+7. Categories and tags are managed as independent entities, not created inline during post creation
 
 ---
 
