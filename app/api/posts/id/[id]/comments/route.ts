@@ -40,7 +40,7 @@ export async function POST(
   }
 
   // All authenticated roles can submit comments (viewer, editor, admin)
-  const userId = auth.user.sub
+  const userId = auth.user.id
 
   // Step 2: Parse request body
   let body: { content?: unknown; parent_comment_id?: unknown }
@@ -53,7 +53,9 @@ export async function POST(
   const { content, parent_comment_id } = body
 
   // Step 3: Validate comment content
-  const contentValidation = validateCommentContent(content)
+  const contentValidation = validateCommentContent(
+    typeof content === 'string' ? content : undefined
+  )
   if (!contentValidation.valid) {
     return badRequest(contentValidation.error || 'Invalid content')
   }
@@ -103,9 +105,9 @@ export async function POST(
     .insert({
       post_id: postId,
       author_id: userId,
-      content: content.toString().trim(),
+      content: (content as string).trim(),
       status: 'pending',
-      parent_comment_id: parent_comment_id || null,
+      parent_comment_id: (typeof parent_comment_id === 'string' ? parent_comment_id : null) || null,
     })
     .select('id, post_id, author_id, content, status, parent_comment_id, created_at, approved_at')
     .single()
@@ -161,7 +163,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: postId } = await params
+  await params
 
   // Authentication is optional (public endpoint)
   // TODO: Parse query parameters (page, limit, sort)

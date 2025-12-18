@@ -51,14 +51,16 @@ export async function GET(
   }
 
   // 3. TRANSFORM RESPONSE
+  const author = Array.isArray(post.users) ? post.users[0] : post.users
+  
   const response = {
     id: post.id,
     title: post.title,
     slug: post.slug,
     content: post.content,
     author: {
-      id: post.users?.id,
-      email: post.users?.email,
+      id: author?.id,
+      email: author?.email,
     },
     published_at: post.published_at,
     created_at: post.created_at,

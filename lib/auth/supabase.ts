@@ -32,12 +32,13 @@ export async function verifyToken(
     const secret = getJwtSecret();
     const verified = await jwtVerify(token, secret);
     
-    const payload = verified.payload;
+    const payload = verified.payload as Record<string, unknown>;
+    const userMetadata = payload.user_metadata as Record<string, unknown> | undefined;
     
     return {
       sub: payload.sub as string,
       email: payload.email as string,
-      role: (payload.user_metadata?.role || 'viewer') as 'admin' | 'editor' | 'viewer',
+      role: ((userMetadata?.role as string) || 'viewer') as 'admin' | 'editor' | 'viewer',
       iat: payload.iat as number,
       exp: payload.exp as number,
     };
