@@ -2,6 +2,7 @@
 // PATCH /api/posts/{id}/publish - Publish Post
 
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth, hasRole, forbidden } from '@/lib/auth'
 
 /**
  * Authentication: Required (editor for own posts, admin for any)
@@ -13,8 +14,21 @@ export async function PATCH(
 ) {
   const postId = params.id
 
-  // TODO: Implement auth guard
-  // TODO: Verify user is author or admin
+  // Authenticate request
+  const auth = await requireAuth(request)
+  if (auth.error) {
+    return NextResponse.json(
+      { error: auth.error.message },
+      { status: auth.error.status }
+    )
+  }
+
+  // Verify role (editor, admin)
+  if (!hasRole(auth.user, ['editor', 'admin'])) {
+    return forbidden('Only editors and admins can publish posts')
+  }
+
+  // TODO: Check if user is post author (for editors) or allow all (for admins)
   // TODO: Validate post exists and is in draft status
   // TODO: Validate post content (min 100 chars, has categories)
   // TODO: Update post status to published

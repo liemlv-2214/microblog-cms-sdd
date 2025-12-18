@@ -142,5 +142,84 @@ This confirms a working **spec → agent → code** workflow.
 
 ---
 
+## ✅ Step C2 – Authentication & Role Guards
+
+STEP C2 focuses on implementing **authentication and authorization guards**
+on top of the API skeleton generated in STEP C1.
+
+At this stage, the goal is to enforce **security boundaries**
+without introducing any business logic or database access.
+
+### What Was Done
+
+- Implemented **JWT authentication** using Supabase JWT
+- Added **role-based access control (RBAC)** for all protected API routes
+- Centralized authentication and authorization logic into shared utilities
+- Ensured all routes still return **placeholder responses** (`501 Not Implemented`)
+- Strictly followed the API contract defined in `spec/api.md`
+
+### Key Principles Followed
+
+- ✅ No business logic
+- ✅ No database access
+- ✅ Stateless authentication (JWT only)
+- ✅ Authorization enforced before processing
+- ✅ Spec-first, code-second
+
+### Authentication Utilities
+
+**Source Structure**
+```text
+.
+├─ lib/
+│  └─ auth/
+│     ├─ supabase.ts
+│     └─ index.ts
+```
+
+- JWT verification implemented using `jose`
+- Token extracted from `Authorization: Bearer <token>`
+- User identity and role derived from token claims
+- Shared helpers:
+  - `requireAuth(request)`
+  - `hasRole(user, roles)`
+  - Standard error responses (401, 403, 404, 409, 422)
+
+### API Routes with Guards Applied
+
+**Source Structure**
+```text
+.
+├─ app/
+│  └─ api/
+│     ├─ posts/
+│     │  ├─ route.ts
+│     │  ├─ [slug]/route.ts
+│     │  └─ [id]/publish/route.ts
+│     ├─ posts/[id]/comments/route.ts
+│     └─ comments/[id]/moderate/route.ts
+```
+
+Each protected route follows a consistent pattern:
+1. Authenticate request (JWT validation)
+2. Authorize user role
+3. Defer ownership and business rules to STEP C3
+4. Return `501 Not Implemented`
+
+### Outcome
+
+STEP C2 establishes a **secure API boundary** that guarantees:
+- Only authenticated users can access protected endpoints
+- Only authorized roles can perform restricted actions
+- The system is ready for business logic in STEP C3
+
+This completes the progression:
+
+**spec → API contract → route skeleton → auth guards**
+
+---
+
 ## Notes for Reviewers
-This repository focuses on Spec Driven Development methodology.
+
+This repository focuses on **Spec Driven Development methodology** rather than feature completeness.
+

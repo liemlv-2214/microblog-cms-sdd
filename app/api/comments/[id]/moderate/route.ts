@@ -2,6 +2,7 @@
 // PATCH /api/comments/{id}/moderate - Moderate Comment
 
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth, hasRole, forbidden } from '@/lib/auth'
 
 /**
  * Authentication: Required (admin, or editor for own posts)
@@ -13,8 +14,25 @@ export async function PATCH(
 ) {
   const commentId = params.id
 
-  // TODO: Implement auth guard
-  // TODO: Verify user is admin or post author
+  // Authenticate request
+  const auth = await requireAuth(request)
+  if (auth.error) {
+    return NextResponse.json(
+      { error: auth.error.message },
+      { status: auth.error.status }
+    )
+  }
+
+  // Only admins can moderate any comments
+  // Editors can only moderate comments on their own posts
+  if (!hasRole(auth.user, ['admin'])) {
+    // For editors, additional check needed: verify they own the post
+    if (!hasRole(auth.user, ['editor'])) {
+      return forbidden('Only admins and editors can moderate comments')
+    }
+    // TODO: Verify comment belongs to post authored by this user
+  }
+
   // TODO: Parse request body (status, rejection_reason)
   // TODO: Validate status is one of: approved, rejected, spam
   // TODO: Validate comment exists and is pending

@@ -3,15 +3,12 @@
 // GET /api/posts/{id}/comments - List Approved Comments
 
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/auth'
 
 /**
  * POST - Submit Comment
  * Authentication: Required (viewer, editor, admin)
  * Creates a new comment in pending state
- * 
- * GET - List Approved Comments
- * Authentication: Optional (public)
- * Returns paginated list of approved comments
  */
 export async function POST(
   request: NextRequest,
@@ -19,8 +16,18 @@ export async function POST(
 ) {
   const postId = params.id
 
-  // TODO: Implement auth guard
-  // TODO: Validate user role (viewer, editor, admin)
+  // Authenticate request
+  const auth = await requireAuth(request)
+  if (auth.error) {
+    return NextResponse.json(
+      { error: auth.error.message },
+      { status: auth.error.status }
+    )
+  }
+
+  // All authenticated roles can submit comments
+  // (viewer, editor, admin)
+
   // TODO: Parse request body (content, parent_comment_id)
   // TODO: Validate comment content (1-5000 chars, not empty)
   // TODO: Validate post exists and is published
@@ -33,13 +40,18 @@ export async function POST(
   )
 }
 
+/**
+ * GET - List Approved Comments
+ * Authentication: Optional (public)
+ * Returns paginated list of approved comments
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const postId = params.id
 
-  // TODO: Implement auth guard (optional)
+  // Authentication is optional (public endpoint)
   // TODO: Parse query parameters (page, limit, sort)
   // TODO: Query approved comments for post
   // TODO: Include single-level nested replies
