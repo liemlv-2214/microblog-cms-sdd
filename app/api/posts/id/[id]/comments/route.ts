@@ -12,9 +12,9 @@ import { requireAuth } from '@/lib/auth'
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const postId = params.id
+  const { id: postId } = await params
 
   // Authenticate request
   const auth = await requireAuth(request)
@@ -47,9 +47,9 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const postId = params.id
+  const { id: postId } = await params
 
   // Authentication is optional (public endpoint)
   // TODO: Parse query parameters (page, limit, sort)

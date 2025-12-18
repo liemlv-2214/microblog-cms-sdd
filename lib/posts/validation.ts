@@ -130,3 +130,31 @@ export function validateTags(tags: unknown): {
 
   return { valid: true }
 }
+
+/**
+ * Validate post content length for publishing
+ * Content must be at least 100 characters
+ * @param content - Post content to validate
+ * @returns { valid: boolean, error?: string }
+ */
+export function validateContentForPublish(content: unknown): {
+  valid: boolean
+  error?: string
+} {
+  if (!content) {
+    return { valid: false, error: 'Content is required' }
+  }
+
+  if (typeof content !== 'string') {
+    return { valid: false, error: 'Content must be a string' }
+  }
+
+  if (content.trim().length < 100) {
+    return {
+      valid: false,
+      error: 'Content must be at least 100 characters for publishing',
+    }
+  }
+
+  return { valid: true }
+}
