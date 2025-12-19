@@ -1,31 +1,28 @@
-// Generated from spec/api.md
-// GET /api/posts/{slug} - Get Post Detail
-
 import { NextRequest, NextResponse } from 'next/server'
 import { notFound } from '@/lib/auth'
-import { getPublishedPostBySlug, formatPostResponse } from '@/lib/posts/persistence'
+import { getPublishedPostById, formatPostResponse } from '@/lib/posts/persistence'
 
 /**
- * GET /api/posts/{slug} - Get Post Detail
+ * GET /api/posts/{id} - Get Post Detail
  * Authentication: Optional (public)
- * Returns full details of a published post by slug
+ * Returns full details of a published post by id
  * 
- * Spec: spec/api.md - GET /api/posts/{slug}
+ * Spec: spec/api.md - GET /api/posts/{id}
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { slug } = await params
+  const { id: postId } = await params
 
-  // 1. FETCH POST BY SLUG (via persistence layer)
-  const { data: post, error: fetchError } = await getPublishedPostBySlug(slug)
+  // 1. FETCH POST BY ID (via persistence layer)
+  const { data: post, error: fetchError } = await getPublishedPostById(postId)
 
   if (fetchError || !post) {
     return notFound('Post not found')
   }
 
-  // 2. CHECK POST STATUS (must be published) - already filtered by persistence layer
+  // 2. CHECK POST STATUS (already filtered by persistence layer)
   if (post.status !== 'published') {
     return notFound('Post not found')
   }

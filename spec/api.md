@@ -197,14 +197,14 @@ sort: "newest" | "oldest" (default: newest)
 **Description:** Returns full details of a published post.
 **Source Flow:** `reader-view-posts.md` (Path A, step 5)
 
-**Endpoint:** `GET /api/posts/{slug}`
+**Endpoint:** `GET /api/posts/{id}`
 
 **Authentication:** Optional  
 **Allowed Roles:** All (public endpoint)
 
 **URL Parameters:**
 ```
-slug: string (post slug)
+id: uuid (post id)
 ```
 
 **Success Response:** `200 OK`

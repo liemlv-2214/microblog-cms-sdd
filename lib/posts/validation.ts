@@ -103,32 +103,44 @@ export function validateOptionalCategories(categories: unknown): {
 }
 
 /**
- * Validate tags array
- * @param tags - Array of tag names
+ * Validate tag_ids array (UUIDs)
+ * @param tagIds - Array of tag UUIDs
  * @returns { valid: boolean, error?: string }
+ */
+export function validateTagIds(tagIds: unknown): {
+  valid: boolean
+  error?: string
+} {
+  if (!tagIds) {
+    return { valid: true } // Tags are optional
+  }
+
+  if (!Array.isArray(tagIds)) {
+    return { valid: false, error: 'tag_ids must be an array' }
+  }
+
+  if (tagIds.length === 0) {
+    return { valid: true } // Empty array is valid
+  }
+
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  for (const id of tagIds) {
+    if (!uuidRegex.test(String(id))) {
+      return { valid: false, error: 'Invalid tag UUID format' }
+    }
+  }
+
+  return { valid: true }
+}
+
+/**
+ * @deprecated Use validateTagIds instead
  */
 export function validateTags(tags: unknown): {
   valid: boolean
   error?: string
 } {
-  if (!tags) {
-    return { valid: true } // Tags are optional
-  }
-
-  if (!Array.isArray(tags)) {
-    return { valid: false, error: 'Tags must be an array' }
-  }
-
-  for (const tag of tags) {
-    if (typeof tag !== 'string' || tag.trim().length === 0) {
-      return {
-        valid: false,
-        error: 'Tags must be non-empty strings',
-      }
-    }
-  }
-
-  return { valid: true }
+  return { valid: true } // Legacy function, no longer used
 }
 
 /**

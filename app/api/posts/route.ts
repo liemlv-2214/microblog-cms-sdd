@@ -7,7 +7,7 @@ import {
   validateTitle,
   validateContent,
   validateOptionalCategories,
-  validateTags,
+  validateTagIds,
   slugify,
 } from '@/lib/posts/validation'
 import {
@@ -18,12 +18,13 @@ import {
   countPublishedPosts,
   formatPostResponse,
 } from '@/lib/posts/persistence'
+import { supabase } from '@/lib/db/supabase'
 
 interface CreatePostRequest {
   title: unknown
   content: unknown
-  categories: unknown
-  tags?: unknown
+  category_ids: unknown
+  tag_ids?: unknown
 }
 
 /**
@@ -68,17 +69,53 @@ export async function POST(request: NextRequest) {
   }
 
   // 6. VALIDATE CATEGORIES (optional for drafts per spec/api.md)
-  const categoriesValidation = validateOptionalCategories(body.categories)
+  const categoriesValidation = validateOptionalCategories(body.category_ids)
   if (!categoriesValidation.valid) {
     return badRequest(
-      categoriesValidation.error || 'Invalid categories'
+      categoriesValidation.error || 'Invalid category_ids'
     )
   }
 
+  // 6b. VALIDATE CATEGORY IDS EXIST (if provided)
+  let categoryIds: string[] = []
+  if (
+    body.category_ids &&
+    Array.isArray(body.category_ids) &&
+    body.category_ids.length > 0
+  ) {
+    categoryIds = body.category_ids as string[]
+    const { data: existingCategories, error: catError } = await supabase
+      .from('categories')
+      .select('id')
+      .in('id', categoryIds)
+
+    if (catError || !existingCategories || existingCategories.length !== categoryIds.length) {
+      return badRequest('One or more category_ids reference non-existent categories')
+    }
+  }
+
   // 7. VALIDATE TAGS (optional)
-  const tagsValidation = validateTags(body.tags)
+  const tagsValidation = validateTagIds(body.tag_ids)
   if (!tagsValidation.valid) {
-    return badRequest(tagsValidation.error || 'Invalid tags')
+    return badRequest(tagsValidation.error || 'Invalid tag_ids')
+  }
+
+  // 7b. VALIDATE TAG IDS EXIST (if provided)
+  let tagIds: string[] = []
+  if (
+    body.tag_ids &&
+    Array.isArray(body.tag_ids) &&
+    body.tag_ids.length > 0
+  ) {
+    tagIds = body.tag_ids as string[]
+    const { data: existingTags, error: tagError } = await supabase
+      .from('tags')
+      .select('id')
+      .in('id', tagIds)
+
+    if (tagError || !existingTags || existingTags.length !== tagIds.length) {
+      return badRequest('One or more tag_ids reference non-existent tags')
+    }
   }
 
   // 8. GENERATE SLUG
@@ -105,19 +142,8 @@ export async function POST(request: NextRequest) {
 
   // 10. INSERT CATEGORY RELATIONSHIPS (only if provided)
   // Categories are optional at draft stage; they will be validated when publishing
-  if (
-    body.categories &&
-    Array.isArray(body.categories) &&
-    body.categories.length > 0
-  ) {
-    const categoryRecords = (body.categories as string[]).map(
-      (categoryId) => ({
-        post_id: post.id,
-        category_id: categoryId,
-      })
-    )
-
-    const { error: categoryError } = await linkCategoriesToPost(categoryRecords)
+  if (categoryIds.length > 0) {
+    const { error: categoryError } = await linkCategoriesToPost(post.id, categoryIds)
 
     if (categoryError) {
       console.error('Failed to link categories:', categoryError)
@@ -126,17 +152,8 @@ export async function POST(request: NextRequest) {
   }
 
   // 11. INSERT TAG RELATIONSHIPS (if provided)
-  if (body.tags && Array.isArray(body.tags) && body.tags.length > 0) {
-    const tags = body.tags as string[]
-    
-    // TODO: Handle tag auto-creation if tags don't exist
-    // For now, assume tags are already in the system
-    const tagRecords = tags.map((tagName) => ({
-      post_id: post.id,
-      tag_name: tagName,
-    }))
-
-    const { error: tagError } = await linkTagsToPost(tagRecords)
+  if (tagIds.length > 0) {
+    const { error: tagError } = await linkTagsToPost(post.id, tagIds)
 
     if (tagError) {
       console.error('Failed to link tags:', tagError)
@@ -146,8 +163,8 @@ export async function POST(request: NextRequest) {
 
   // 12. RETURN SUCCESS RESPONSE (201 Created)
   const formatted = formatPostResponse(post, false) as Record<string, unknown>
-  formatted.categories = body.categories || []
-  formatted.tags = body.tags || []
+  formatted.category_ids = categoryIds
+  formatted.tag_ids = tagIds
 
   return NextResponse.json(formatted, { status: 201 })
 }
@@ -213,7 +230,7 @@ export async function GET(request: NextRequest) {
   // 5. FILTER BY TAG (client-side after fetch)
   if (tagName) {
     filteredPosts = filteredPosts.filter((post: any) =>
-      post.post_tags?.some((pt: any) => pt.tag_name?.toLowerCase().includes(tagName.toLowerCase()))
+      post.post_tags?.some((pt: any) => pt.tags?.slug?.toLowerCase() === tagName.toLowerCase())
     )
   }
 
@@ -248,14 +265,8 @@ export async function GET(request: NextRequest) {
     status: post.status,
     published_at: post.published_at,
     comment_count: 0, // TODO: Fetch comment count when C3.5/C3.6 ready
-    categories: post.post_categories?.map((pc: any) => ({
-      id: pc.category_id,
-      slug: pc.categories?.slug,
-    })) || [],
-    tags: post.post_tags?.map((pt: any) => ({
-      id: pt.tags?.id,
-      slug: pt.tags?.slug,
-    })) || [],
+    category_ids: post.post_categories?.map((pc: any) => pc.category_id) || [],
+    tag_ids: post.post_tags?.map((pt: any) => pt.tag_id) || [],
   }))
 
   // 9. RETURN RESPONSE WITH PAGINATION

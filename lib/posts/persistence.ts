@@ -20,7 +20,7 @@ export interface CategoryLink {
 
 export interface TagLink {
   post_id: string
-  tag_name: string
+  tag_id: string
 }
 
 export interface PostWithRelations {
@@ -66,28 +66,31 @@ export async function createDraftPost(data: PostCreationData) {
 }
 
 /**
- * Link categories to post
- * RESPONSIBILITY: Database insert only. No validation of category IDs (route responsibility).
+ * Link categories to post by category_id
+ * RESPONSIBILITY: Database insert only. No validation (route validates category existence before calling).
  * IDEMPOTENT: Safe to call with empty array (returns no-op).
- * TRANSACTIONS: TODO - This should be part of parent createDraftPost transaction in v2.
+ * @param postId - Post UUID
+ * @param categoryIds - Array of category UUIDs (must exist in database; route validates)
  */
-export async function linkCategoriesToPost(links: CategoryLink[]) {
-  if (links.length === 0) {
+export async function linkCategoriesToPost(postId: string, categoryIds: string[]) {
+  if (categoryIds.length === 0) {
     return { data: [], error: null }
   }
+  const links = categoryIds.map((category_id) => ({ post_id: postId, category_id }))
   return supabase.from('post_categories').insert(links)
 }
 
 /**
- * Link tags to post
- * RESPONSIBILITY: Database insert only. No validation of tag existence (route responsibility).
+ * RESPONSIBILITY: Database insert only. No validation (route validates tag existence before calling).
  * IDEMPOTENT: Safe to call with empty array (returns no-op).
- * TRANSACTIONS: TODO - This should be part of parent createDraftPost transaction in v2.
+ * @param postId - Post UUID
+ * @param tagIds - Array of tag UUIDs (must exist in database; route validates)
  */
-export async function linkTagsToPost(links: TagLink[]) {
-  if (links.length === 0) {
+export async function linkTagsToPost(postId: string, tagIds: string[]) {
+  if (tagIds.length === 0) {
     return { data: [], error: null }
   }
+  const links = tagIds.map((tag_id) => ({ post_id: postId, tag_id }))
   return supabase.from('post_tags').insert(links)
 }
 
@@ -108,7 +111,6 @@ export async function getPostById(postId: string) {
     .from('posts')
     .select('*')
     .eq('id', postId)
-    .is('deleted_at', null)
     .single()
 }
 
@@ -123,7 +125,6 @@ export async function getPostBySlug(slug: string) {
     .from('posts')
     .select('id, slug, status')
     .eq('slug', slug)
-    .is('deleted_at', null)
     .single()
 }
 
@@ -192,13 +193,12 @@ export async function listPublishedPosts(
         categories (id, name, slug)
       ),
       post_tags (
-        tag_name,
+        tag_id,
         tags (id, name, slug)
       )
       `
     )
     .eq('status', 'published')
-    .is('deleted_at', null)
     .order('published_at', { ascending: sortOrder === 'asc' })
     .range(offset, offset + limit - 1)
 }
@@ -211,18 +211,60 @@ export async function countPublishedPosts() {
     .from('posts')
     .select('id', { count: 'exact', head: true })
     .eq('status', 'published')
-    .is('deleted_at', null)
 }
 
 // ============================================================================
-// GET PUBLISHED POST BY SLUG (C3.4)
+// GET PUBLISHED POST BY ID (C3.4)
 // ============================================================================
 // SCOPE: Pure persistence operations. Public read; no auth checks needed.
+
+/**
+ * Fetch single published post by ID with all relationships
+ * RESPONSIBILITY: Database read only. Includes author, categories, and tags.
+ * NOTE: Route applies response formatting via formatPostResponse().
+ */
+export async function getPublishedPostById(postId: string) {
+  return supabase
+    .from('posts')
+    .select(
+      `
+      id,
+      title,
+      slug,
+      content,
+      author_id,
+      status,
+      published_at,
+      created_at,
+      updated_at,
+      users!author_id (id, email),
+      post_categories (
+        category_id,
+        categories (id, name, slug)
+      ),
+      post_tags (
+        tag_id,
+        tags (id, name, slug)
+      )
+      `
+    )
+    .eq('id', postId)
+    .eq('status', 'published')
+    .single()
+}
+
+// ============================================================================
+// GET PUBLISHED POST BY SLUG (C3.4 - DEPRECATED)
+// ============================================================================
+// SCOPE: Pure persistence operations. Public read; no auth checks needed.
+// NOTE: This function is kept for backwards compatibility but should be replaced
+// with getPublishedPostById in all new code.
 
 /**
  * Fetch single published post by slug with all relationships
  * RESPONSIBILITY: Database read only. Includes author, categories, and tags.
  * NOTE: Route applies response formatting via formatPostResponse().
+ * @deprecated Use getPublishedPostById instead
  */
 export async function getPublishedPostBySlug(slug: string) {
   return supabase
@@ -244,14 +286,13 @@ export async function getPublishedPostBySlug(slug: string) {
         categories (id, name, slug)
       ),
       post_tags (
-        tag_name,
+        tag_id,
         tags (id, name, slug)
       )
       `
     )
     .eq('slug', slug)
     .eq('status', 'published')
-    .is('deleted_at', null)
     .single()
 }
 
@@ -317,12 +358,12 @@ export function formatPostResponse(
 
   if (post.post_tags) {
     const tags = post.post_tags as Array<{
-      tag_name: string
+      tag_id: string
       tags?: { id: string; name: string; slug: string }
     }>
     response.tags = tags.map((pt) => ({
       id: pt.tags?.id,
-      name: pt.tag_name,
+      name: pt.tags?.name,
       slug: pt.tags?.slug,
     }))
   }

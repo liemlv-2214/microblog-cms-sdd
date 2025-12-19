@@ -61,7 +61,7 @@ export async function PATCH(
     return badRequest(contentValidation.error || 'Invalid content for publishing')
   }
 
-  // 7. CHECK CATEGORIES (must have at least one) - TODO: Move to persistence query
+  // 7. CHECK CATEGORIES (must have at least one) - Fetch category_ids
   const { data: categories, error: categoriesError } = await supabase
     .from('post_categories')
     .select('category_id')
@@ -70,6 +70,9 @@ export async function PATCH(
   if (categoriesError || !categories || categories.length === 0) {
     return badRequest('Post must have at least one category to publish')
   }
+
+  // Extract category_ids from relationships
+  const categoryIds = categories.map((c: any) => c.category_id)
 
   // 8. GENERATE FINAL SLUG WITH UNIQUENESS CHECK
   const baseSlug = slugify(post.title)
@@ -128,15 +131,15 @@ export async function PATCH(
 
   // 10. FORMAT AND RETURN SUCCESS RESPONSE (200 OK)
   const formatted = formatPostResponse(updatedPost, false) as Record<string, unknown>
-  formatted.categories = categories?.map((c: any) => c.category_id) || []
+  formatted.category_ids = categoryIds
   
-  // TODO: Fetch tags from persistence layer instead of separate query
+  // Fetch tag_ids from persistence
   const { data: tagRecords } = await supabase
     .from('post_tags')
-    .select('tag_name')
+    .select('tag_id')
     .eq('post_id', postId)
 
-  formatted.tags = tagRecords?.map((t: any) => t.tag_name) || []
+  formatted.tag_ids = tagRecords?.map((t: any) => t.tag_id) || []
 
   return NextResponse.json(formatted, { status: 200 })
 }
