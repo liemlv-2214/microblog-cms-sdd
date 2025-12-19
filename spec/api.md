@@ -365,6 +365,40 @@ sort: "oldest" | "newest" (default: oldest)
 
 ---
 
+### 6.5 List Pending Comments (Admin Only)
+Returns all comments awaiting moderation.
+
+**Source Flow:** `admin-moderate-comments.md` (STEP E4)
+
+**Endpoint:** `GET /api/comments/pending`
+
+**Authentication:** Required  
+**Allowed Roles:** `admin`
+
+**Success Response:** `200 OK`
+```json
+[
+  {
+    "id": "uuid",
+    "content": "This is a comment awaiting moderation...",
+    "author_email": "reader@example.com",
+    "created_at": "2024-12-16T14:20:00Z"
+  }
+]
+```
+
+**Behavior:**
+- Returns all comments with `status = "pending"` ordered by `created_at` ASC
+- Includes minimal author information (email only)
+- No pagination (returns all pending comments)
+
+**Error Responses:**
+- `401 Unauthorized` – Invalid or missing token
+- `403 Forbidden` – User is not admin
+- `500 Internal Server Error` – Server error
+
+---
+
 ## Resource: Moderation
 
 ### 7. Moderate Comment

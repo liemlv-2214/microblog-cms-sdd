@@ -141,6 +141,29 @@ export async function getApprovedReplies(postId: string, parentCommentId: string
 }
 
 // ============================================================================
+// LIST PENDING COMMENTS (C3.8)
+// ============================================================================
+// SCOPE: Pure persistence operations supporting admin moderation workflow.
+// Authorization (admin-only) is enforced by route handler.
+// TRANSACTIONS: Not needed; reads are non-critical and queries are stateless.
+
+/**
+ * List all pending comments ordered by creation date (oldest first)
+ * RESPONSIBILITY: Database query only. Fetches all pending comments with author details.
+ * AUTHORIZATION SUPPORT: Route validates admin role before calling this function.
+ * BEHAVIOR: No pagination (v1 requirement). Returns all pending comments ordered ASC.
+ */
+export async function listPendingComments() {
+  return supabase
+    .from('comments')
+    .select(
+      'id, post_id, author_id, content, created_at, users!author_id (id, email)'
+    )
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+}
+
+// ============================================================================
 // MODERATE COMMENT (C3.7)
 // ============================================================================
 // SCOPE: Pure persistence operations supporting moderation workflow.
