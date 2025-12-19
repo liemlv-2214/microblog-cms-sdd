@@ -71,9 +71,21 @@ export default function CommentForm({ postId }: CommentFormProps) {
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {success && <p style={{ color: 'green' }}>Comment submitted for moderation.</p>}
 
-      <button type="submit" disabled={loading}>
+      <button
+        type="submit"
+        disabled={loading}
+        style={{
+            padding: '0.6rem 1.2rem',
+            backgroundColor: '#0066cc',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+        }}
+        >
         {loading ? 'Submitting...' : 'Submit Comment'}
-      </button>
+    </button>
+
     </form>
   )
 }

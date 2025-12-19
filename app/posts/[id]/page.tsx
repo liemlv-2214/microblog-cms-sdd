@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import CommentForm from './comment-form'
+import CommentList from './comment-list'
 
 interface Post {
   id: string
@@ -100,6 +101,8 @@ export default async function PostDetailPage({
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Submit a Comment</h2>
           <CommentForm postId={id} />
         </div>
+
+        <CommentList postId={id} />
       </main>
     )
   } catch (error) {
