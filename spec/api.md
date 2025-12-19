@@ -221,11 +221,19 @@ id: uuid (post id)
   "published_at": "2024-12-16T10:35:00Z",
   "created_at": "2024-12-16T10:30:00Z",
   "comment_count": 3,
-  "category_ids": [
-    "uuid-1"
+  "categories": [
+    {
+      "id": "uuid-1",
+      "name": "",
+      "slug": "",
+    }
   ],
-  "tag_ids": [
-    "uuid-2"
+  "tags": [
+    {
+      "id": "uuid-2",
+      "name": "",
+      "slug": "",
+    }
   ]
 }
 ```
