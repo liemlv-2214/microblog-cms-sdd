@@ -243,9 +243,92 @@ id: uuid (post id)
 
 ---
 
+## Resource: Categories
+
+### 5. List Categories
+**Description:** Returns a list of all active categories.
+
+**Use Case:** Required for Create Post UI (E5) to display available categories for selection.
+
+**Endpoint:** `GET /api/categories`
+
+**Authentication:** Optional (public endpoint)  
+**Allowed Roles:** All (public)
+
+**Success Response:** `200 OK`
+```json
+[
+  {
+    "id": "uuid-1",
+    "name": "Technology",
+    "slug": "technology"
+  },
+  {
+    "id": "uuid-2",
+    "name": "Travel",
+    "slug": "travel"
+  }
+]
+```
+
+**Behavior:**
+- Returns only **active** categories
+- Ordered alphabetically by name
+- Returns empty array if no categories exist
+- No pagination required (v1 scope: assumes limited categories)
+
+**Error Responses:**
+- `500 Internal Server Error` – Server error
+
+---
+
+## Resource: Tags
+
+### 6. List Tags
+**Description:** Returns a list of all available tags.
+
+**Use Case:** Required for Create Post UI (E5) to display available tags for selection.
+
+**Endpoint:** `GET /api/tags`
+
+**Authentication:** Optional (public endpoint)  
+**Allowed Roles:** All (public)
+
+**Success Response:** `200 OK`
+```json
+[
+  {
+    "id": "uuid-1",
+    "name": "javascript",
+    "slug": "javascript"
+  },
+  {
+    "id": "uuid-2",
+    "name": "react",
+    "slug": "react"
+  },
+  {
+    "id": "uuid-3",
+    "name": "web-development",
+    "slug": "web-development"
+  }
+]
+```
+
+**Behavior:**
+- Returns all available tags
+- Ordered alphabetically by name
+- Returns empty array if no tags exist
+- No pagination required (v1 scope: assumes limited tags)
+
+**Error Responses:**
+- `500 Internal Server Error` – Server error
+
+---
+
 ## Resource: Comments
 
-### 5. Submit Comment
+### 7. Submit Comment
 Submits a new comment for a published post.
 New comments are created in pending state.
 
@@ -295,7 +378,7 @@ id: uuid (post id)
 
 ---
 
-### 6. List Approved Comments
+### 8. List Approved Comments
 Returns approved comments for a post.
 
 **Source Flow:** `reader-view-posts.md` (Path D)
@@ -365,7 +448,7 @@ sort: "oldest" | "newest" (default: oldest)
 
 ---
 
-### 6.5 List Pending Comments (Admin Only)
+### 8.5 List Pending Comments (Admin Only)
 Returns all comments awaiting moderation.
 
 **Source Flow:** `admin-moderate-comments.md` (STEP E4)
@@ -401,7 +484,7 @@ Returns all comments awaiting moderation.
 
 ## Resource: Moderation
 
-### 7. Moderate Comment
+### 9. Moderate Comment
 Approves, rejects, or marks a comment as spam.
 
 **Source Flow:** `moderate-comment.md` (Paths B, C, D)

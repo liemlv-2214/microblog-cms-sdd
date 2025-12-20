@@ -26,7 +26,19 @@ export default async function TimelinePage() {
 
     return (
       <main style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-        <h1>Timeline</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ margin: 0 }}>Timeline</h1>
+          <a href="/posts/new" style={{ 
+            padding: '0.75rem 1rem', 
+            backgroundColor: '#007bff', 
+            color: 'white', 
+            textDecoration: 'none', 
+            borderRadius: '4px',
+            fontSize: '1rem'
+          }}>
+            + Create Post
+          </a>
+        </div>
 
         {posts.length === 0 ? (
           <p>No posts available.</p>
