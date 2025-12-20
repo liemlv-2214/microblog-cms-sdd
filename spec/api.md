@@ -243,6 +243,75 @@ id: uuid (post id)
 
 ---
 
+### 4.5 List All Posts (Admin Only)
+**Description:** Returns all posts regardless of status (draft and published). For admin post management only.
+
+**Use Case:** Admin Manage Posts UI (E6) to view and manage draft posts.
+
+**Endpoint:** `GET /api/admin/posts`
+
+**Authentication:** Required  
+**Allowed Roles:** `admin` only
+
+**Query Parameters (optional):**
+```
+page: integer (default: 1)
+limit: integer (default: 10, max: 50)
+sort: "created_at" | "updated_at" (default: created_at)
+order: "asc" | "desc" (default: desc)
+```
+
+**Success Response:** `200 OK`
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "title": "My First Blog Post",
+      "slug": "my-first-blog-post",
+      "status": "draft",
+      "author": {
+        "id": "uuid",
+        "email": "example@example.com"
+      },
+      "created_at": "2024-12-16T10:30:00Z",
+      "published_at": null
+    },
+    {
+      "id": "uuid-2",
+      "title": "Published Post",
+      "slug": "published-post",
+      "status": "published",
+      "author": {
+        "id": "uuid",
+        "email": "example@example.com"
+      },
+      "created_at": "2024-12-15T09:00:00Z",
+      "published_at": "2024-12-15T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 25,
+    "total_pages": 3
+  }
+}
+```
+
+**Behavior:**
+- Returns all posts (both draft and published)
+- Ordered by `sort` parameter (default: created_at DESC)
+- Includes draft and published posts with full details
+- Only accessible by admin role
+
+**Error Responses:**
+- `400 Bad Request` – Invalid query parameters (e.g., limit > 50)
+- `401 Unauthorized` – Invalid or missing token
+- `403 Forbidden` – User is not admin
+
+---
+
 ## Resource: Categories
 
 ### 5. List Categories
@@ -284,7 +353,7 @@ id: uuid (post id)
 
 ## Resource: Tags
 
-### 6. List Tags
+### 7. List Tags
 **Description:** Returns a list of all available tags.
 
 **Use Case:** Required for Create Post UI (E5) to display available tags for selection.
@@ -328,7 +397,7 @@ id: uuid (post id)
 
 ## Resource: Comments
 
-### 7. Submit Comment
+### 8. Submit Comment
 Submits a new comment for a published post.
 New comments are created in pending state.
 
@@ -378,7 +447,7 @@ id: uuid (post id)
 
 ---
 
-### 8. List Approved Comments
+### 9. List Approved Comments
 Returns approved comments for a post.
 
 **Source Flow:** `reader-view-posts.md` (Path D)
@@ -448,7 +517,7 @@ sort: "oldest" | "newest" (default: oldest)
 
 ---
 
-### 8.5 List Pending Comments (Admin Only)
+### 9.5 List Pending Comments (Admin Only)
 Returns all comments awaiting moderation.
 
 **Source Flow:** `admin-moderate-comments.md` (STEP E4)
@@ -484,7 +553,7 @@ Returns all comments awaiting moderation.
 
 ## Resource: Moderation
 
-### 9. Moderate Comment
+### 10. Moderate Comment
 Approves, rejects, or marks a comment as spam.
 
 **Source Flow:** `moderate-comment.md` (Paths B, C, D)

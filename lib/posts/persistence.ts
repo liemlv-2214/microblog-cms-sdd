@@ -370,3 +370,30 @@ export function formatPostResponse(
 
   return response
 }
+
+// ============================================================================
+// LIST ALL POSTS (ADMIN) (C2 - E6)
+// ============================================================================
+// SCOPE: Pure persistence operations. No authorization checks here.
+// Authorization (admin-only) is enforced by route handler in app/api/admin/posts/route.ts
+
+/**
+ * Fetch all posts for admin management (draft + published + archived)
+ * RESPONSIBILITY: Database read only. No business logic.
+ * AUTHORIZATION: No auth checks here; route validates admin role before calling.
+ */
+export async function listAllPostsForAdmin() {
+  return supabase
+    .from('posts')
+    .select(
+      `
+      id,
+      title,
+      status,
+      created_at,
+      published_at,
+      users!author_id (id, email)
+      `
+    )
+    .order('created_at', { ascending: false })
+}
