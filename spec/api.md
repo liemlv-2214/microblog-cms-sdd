@@ -522,7 +522,7 @@ Returns all comments awaiting moderation.
 
 **Source Flow:** `admin-moderate-comments.md` (STEP E4)
 
-**Endpoint:** `GET /api/comments/pending`
+**Endpoint:** `GET /api/admin/comments/pending`
 
 **Authentication:** Required  
 **Allowed Roles:** `admin`
@@ -558,7 +558,7 @@ Approves, rejects, or marks a comment as spam.
 
 **Source Flow:** `moderate-comment.md` (Paths B, C, D)
 
-**Endpoint:** `PATCH /api/comments/{id}/moderate`
+**Endpoint:** `PATCH /api/admin/comments/{id}/moderate`
 
 **Authentication:** Required  
 **Allowed Roles:** `admin`, or `editor` (only allowed to moderate comments on their own posts)

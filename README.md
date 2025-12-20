@@ -335,7 +335,7 @@ Each sub-step focuses on **one API endpoint only** to:
 
 ## ✅ C3.7 – Moderate Comment
 
-**API:** `PATCH /api/comments/{id}/moderate`
+**API:** `PATCH /api/admin/comments/{id}/moderate`
 
 * Enforced authentication (`admin`, `editor`)
 * Admin can moderate any comment

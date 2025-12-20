@@ -6,7 +6,7 @@ import { requireAuth, hasRole, forbidden } from '@/lib/auth'
 import { listPendingComments } from '@/lib/comments/persistence'
 
 /**
- * GET /api/comments/pending
+ * GET /api/admin/comments/pending
  *
  * List all comments awaiting moderation (status = "pending")
  *

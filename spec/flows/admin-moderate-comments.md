@@ -89,5 +89,5 @@ Admin opens moderation screen to review pending comments
 
 ## Related API Endpoints
 
-- `GET /api/comments/pending` – Retrieve pending comments
-- `PATCH /api/comments/{id}/moderate` – Update comment status
+- `GET /api/admin/comments/pending` – Retrieve pending comments
+- `PATCH /api/admin/comments/{id}/moderate` – Update comment status

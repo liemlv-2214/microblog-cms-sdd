@@ -1,5 +1,6 @@
 // DEV ONLY – Admin moderation
 
+import Link from 'next/link'
 import ModerationActions from './moderation-actions'
 
 interface Comment {
@@ -14,7 +15,7 @@ export default async function AdminCommentsPage() {
   let error: string | null = null
 
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/comments/pending`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/admin/comments/pending`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -34,6 +35,15 @@ export default async function AdminCommentsPage() {
 
   return (
     <main style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto' }}>
+      {/* Breadcrumb */}
+      <div style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+        <Link href="/admin" style={{ color: '#3b82f6', textDecoration: 'none' }}>
+          Admin Dashboard
+        </Link>
+        <span style={{ margin: '0 0.5rem', color: '#718096' }}>/</span>
+        <span style={{ color: '#1a202c', fontWeight: '600' }}>Moderate Comments</span>
+      </div>
+
       <h1>Admin – Moderate Comments</h1>
 
       {error && (

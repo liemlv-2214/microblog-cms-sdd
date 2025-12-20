@@ -18,7 +18,7 @@ export default function ModerationActions({ commentId }: ModerationActionsProps)
     setMessage(null)
 
     try {
-      const res = await fetch(`/api/comments/${commentId}/moderate`, {
+      const res = await fetch(`/api/admin/comments/${commentId}/moderate`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

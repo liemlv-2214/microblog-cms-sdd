@@ -1,5 +1,5 @@
-// Generated from spec/api.md
-// PATCH /api/comments/{id}/moderate - Moderate Comment
+// C3.7 – Moderate Comment (Admin/Editor)
+// Specification: spec/api.md / spec/flows/admin-moderate-comments.md
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, hasRole, forbidden, badRequest, notFound, conflict } from '@/lib/auth'
@@ -12,19 +12,39 @@ import {
 } from '@/lib/comments/persistence'
 
 /**
- * PATCH - Moderate Comment
- * Authentication: Required (admin or editor for own posts)
- * Approves, rejects, or marks comment as spam
+ * PATCH /api/admin/comments/{id}/moderate
  *
- * Step-by-step flow:
- * 1. Authenticate user
- * 2. Parse and validate request body (status)
- * 3. Fetch comment and check it exists
- * 4. Check comment status is pending (409 if already moderated)
- * 5. Fetch post to verify permissions
- * 6. Check authorization (admin or comment author's editor)
- * 7. Update comment status with approved_at if approved
- * 8. Return updated comment
+ * Moderate a pending comment (approve, reject, or mark as spam)
+ *
+ * Authentication: REQUIRED
+ * Allowed roles: admin, or editor (for comments on own posts)
+ *
+ * Request body:
+ * {
+ *   "status": "approved" | "rejected" | "spam"
+ * }
+ *
+ * Response (200 OK):
+ * Approved:
+ * {
+ *   "id": "uuid",
+ *   "status": "approved",
+ *   "approved_at": "ISO-8601"
+ * }
+ *
+ * Rejected/Spam:
+ * {
+ *   "id": "uuid",
+ *   "status": "rejected" | "spam"
+ * }
+ *
+ * Errors:
+ * - 400 Bad Request: Invalid status value
+ * - 401 Unauthorized: Missing or invalid token
+ * - 403 Forbidden: User is not admin or not editor of post
+ * - 404 Not Found: Comment not found
+ * - 409 Conflict: Comment already moderated (status ≠ pending)
+ * - 500 Internal Server Error: Database error
  */
 export async function PATCH(
   request: NextRequest,
