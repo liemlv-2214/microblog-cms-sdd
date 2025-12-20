@@ -161,10 +161,10 @@ export function validateContentForPublish(content: unknown): {
     return { valid: false, error: 'Content must be a string' }
   }
 
-  if (content.trim().length < 100) {
+  if (content.trim().length < 1) {
     return {
       valid: false,
-      error: 'Content must be at least 100 characters for publishing',
+      error: 'Content must be at least 1 character for publishing',
     }
   }
 
